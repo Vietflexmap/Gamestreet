@@ -1,4 +1,4 @@
-name: Deploy GameStreet to GitHub Pages
+name: Publish GameStreet
 
 on:
   push:
@@ -6,32 +6,49 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 
 concurrency:
-  group: "pages"
+  group: "gamestreet-publish"
   cancel-in-progress: true
 
 jobs:
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+  publish:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout main
         uses: actions/checkout@v6
-
-      - name: Configure Pages
-        uses: actions/configure-pages@v5
-
-      - name: Upload static site
-        uses: actions/upload-pages-artifact@v4
         with:
-          path: "."
+          fetch-depth: 0
 
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+      - name: Sync static site to gh-pages
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          site_dir="$(mktemp -d)"
+          rsync -a \
+            --exclude '.git' \
+            --exclude '.github' \
+            ./ "$site_dir/"
+
+          git fetch origin gh-pages
+          pages_dir="$(mktemp -d)"
+          git worktree add "$pages_dir" origin/gh-pages
+
+          rsync -a --delete \
+            --exclude '.git' \
+            "$site_dir/" "$pages_dir/"
+          touch "$pages_dir/.nojekyll"
+
+          cd "$pages_dir"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No site changes to publish."
+            exit 0
+          fi
+
+          git commit -m "deploy: publish ${GITHUB_SHA::7}"
+          git push origin HEAD:gh-pages
