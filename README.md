@@ -1,46 +1,55 @@
 # GameStreet 🌍
 
-**GameStreet** là game đoán vị trí địa lý chạy trực tiếp trên trình duyệt: xem panorama 360°, đặt ghim lên bản đồ và kiếm điểm theo khoảng cách tới vị trí thật.
+**GameStreet** là game trắc nghiệm địa lý chạy trực tiếp trên trình duyệt. Người chơi xem một panorama 360° ngẫu nhiên, quan sát dấu hiệu đường phố và chọn đúng thành phố trong **4 đáp án**.
 
 > Mục tiêu của bản static MVP: **không đăng nhập, không backend, mở trang là chơi ngay**.
 
-## Chơi trực tiếp
-
-Sau khi GitHub Pages được bật cho repository, game được phục vụ tại:
+## 🎮 Chơi trực tiếp
 
 **https://vietflexmap.github.io/Gamestreet/**
 
+## Cách chơi
+
+1. Nhập tên người chơi.
+2. Mỗi ván có đúng **4 lượt**.
+3. Mỗi lượt lấy ngẫu nhiên một panorama từ bộ địa điểm có sẵn.
+4. Game sinh **4 lựa chọn thành phố** gồm 1 đáp án đúng + 3 đáp án nhiễu ngẫu nhiên.
+5. Chọn thành phố và nhấn **Gửi đáp án**.
+6. Nếu đúng: hiện **“Chúc mừng bạn!”** và cộng **+1.000 điểm**.
+7. Nếu sai: hiện **“Bạn đã sai, rất tiếc!”**, cho biết **kết quả đúng** và trừ **−500 điểm**.
+8. Sau lượt thứ 4, game hiển thị tổng điểm, số câu đúng và bảng kết quả từng lượt.
+
+## Luật điểm
+
+- Điểm khởi đầu: **2.000**.
+- Đúng: **+1.000**.
+- Sai: **−500**.
+- Điểm không thấp hơn **0**.
+- Điểm tối đa sau 4 lượt: **6.000**.
+
 ## Tính năng
 
-- 5 vòng mỗi ván, 60 giây mỗi vòng.
-- Panorama 360° có thể kéo ngang để quan sát.
-- Bản đồ đoán vị trí dùng Leaflet + OpenStreetMap.
-- Tính khoảng cách bằng Haversine và điểm theo hàm suy giảm khoảng cách.
-- Màn hình kết quả hiển thị ghim dự đoán, vị trí thật và đường nối.
-- Tổng kết 5 vòng, khoảng cách trung bình, kỷ lục cá nhân.
-- Bảng xếp hạng cục bộ bằng `localStorage` — không cần tài khoản.
-- Responsive desktop / mobile.
-- Có thể chia sẻ kết quả bằng Web Share API hoặc clipboard.
-- GitHub Actions workflow sẵn sàng deploy lên GitHub Pages.
+- 4 lượt chơi/người.
+- 4 đáp án thành phố/lượt.
+- Ảnh panorama 360° được lấy ngẫu nhiên.
+- Kéo ngang panorama để quan sát.
+- Thứ tự đáp án được xáo ngẫu nhiên mỗi lượt.
+- Phản hồi đúng/sai ngay sau khi gửi.
+- Hiển thị tên thành phố và quốc gia đúng.
+- Cộng/trừ điểm rõ ràng.
+- Tổng kết số câu đúng trên 4 lượt.
+- Local leaderboard lưu bằng `localStorage`.
+- Responsive cho desktop và mobile.
+- Không cần API key và không cần backend cho bản MVP.
 
 ## Công nghệ
 
 - HTML5
 - CSS3
 - Vanilla JavaScript
-- [Leaflet](https://leafletjs.com/)
-- [OpenStreetMap](https://www.openstreetmap.org/)
-- Panorama mở từ [Wikimedia Commons](https://commons.wikimedia.org/)
-
-Không có bước build và không cần Node.js để chạy bản production.
-
-## Chạy local
-
-```bash
-python -m http.server 8080
-```
-
-Sau đó mở `http://localhost:8080`.
+- Wikimedia Commons cho panorama demo
+- GitHub Pages để phát hành
+- GitHub Actions để đồng bộ `main` → `gh-pages`
 
 ## Cấu trúc
 
@@ -49,6 +58,7 @@ Gamestreet/
 ├── index.html
 ├── styles.css
 ├── app.js
+├── README.md
 ├── LICENSE
 ├── THIRD_PARTY_ASSETS.md
 └── .github/
@@ -56,40 +66,26 @@ Gamestreet/
         └── pages.yml
 ```
 
-## Thuật toán điểm
+## Thêm thành phố / panorama
 
-Mỗi vòng tối đa **5.000 điểm**.
+Mỗi địa điểm được khai báo trong `LOCATIONS` ở `app.js`:
 
-```text
-score = round(5000 * exp(-distance_m / 2000))
+```js
+{
+  id: "dia-diem",
+  city: "Tên thành phố",
+  country: "Quốc gia",
+  file: "Tên file panorama trên Wikimedia Commons",
+  author: "Tác giả",
+  license: "Giấy phép",
+  hint: "Thông tin xuất hiện sau khi trả lời"
+}
 ```
 
-Nếu khoảng cách ≤ 50 m, người chơi nhận đủ 5.000 điểm.
-
-## Dữ liệu panorama
-
-Repository **không đóng gói lại** các ảnh panorama. Ảnh được tải trực tiếp từ Wikimedia Commons bằng URL công khai và hiển thị attribution trong giao diện. Giấy phép của từng ảnh được liệt kê trong [`THIRD_PARTY_ASSETS.md`](THIRD_PARTY_ASSETS.md) và **không bị thay thế bởi giấy phép MIT của mã nguồn**.
-
-## Bảng xếp hạng thật / Google Street View
-
-Bản GitHub Pages hiện tại cố ý không dùng backend để bảo đảm “clone là chạy”. Nếu muốn nâng cấp production:
-
-1. Dùng Supabase/PostgreSQL cho global leaderboard.
-2. Thêm API/serverless để rate-limit và chống sửa điểm.
-3. Tích hợp Google Maps JavaScript Street View hoặc nguồn panorama khác qua server-side key/proxy phù hợp điều khoản dịch vụ.
-4. Mở rộng bộ địa điểm theo thành phố / quốc gia / thử thách hàng ngày.
-
-## Đóng góp
-
-Issue và Pull Request đều được chào đón. Khi thêm panorama mới, hãy đảm bảo:
-
-- Có tọa độ chính xác.
-- Có giấy phép cho phép tái sử dụng.
-- Ghi đầy đủ tác giả + giấy phép.
-- Không commit API key hoặc secret vào repository.
+Nên bổ sung nhiều panorama cho mỗi thành phố để giảm khả năng người chơi ghi nhớ ảnh.
 
 ## License
 
-Mã nguồn GameStreet phát hành theo **MIT License**. Xem [`LICENSE`](LICENSE).
+Mã nguồn GameStreet được phát hành theo **MIT License**.
 
-Dữ liệu/hình ảnh bên thứ ba giữ nguyên giấy phép của chủ sở hữu tương ứng.
+Ảnh panorama và nội dung bên thứ ba **không thuộc MIT License của mã nguồn**. Xem `THIRD_PARTY_ASSETS.md` để biết attribution và giấy phép tương ứng.
