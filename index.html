@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#0b1020" />
+  <meta name="description" content="GameStreet — trò chơi đoán vị trí qua panorama 360°, mã nguồn mở MIT." />
+  <title>GameStreet — Đoán phố, tìm thành phố</title>
+  <link rel="preconnect" href="https://commons.wikimedia.org" />
+  <link rel="preconnect" href="https://tile.openstreetmap.org" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIINfQ3ynzO+Zx4yHPV8lyl0ArUONsBB0H0=" crossorigin="" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main id="app" class="app-shell">
+    <section id="homeScreen" class="screen home-screen">
+      <div class="ambient ambient-a"></div>
+      <div class="ambient ambient-b"></div>
+
+      <nav class="topbar landing-topbar" aria-label="Điều hướng">
+        <a class="brand" href="#" aria-label="GameStreet trang chủ">
+          <span class="brand-mark" aria-hidden="true">G</span>
+          <span>GameStreet</span>
+        </a>
+        <div class="topbar-actions">
+          <button id="howBtn" class="button button-ghost button-sm" type="button">Cách chơi</button>
+          <a class="button button-ghost button-sm" href="https://github.com/Vietflexmap/Gamestreet" target="_blank" rel="noreferrer">GitHub</a>
+        </div>
+      </nav>
+
+      <div class="hero-wrap">
+        <div class="hero-copy">
+          <span class="eyebrow">OPEN SOURCE · MIT · 5 VÒNG</span>
+          <h1>Nhìn quanh.<br /><span>Ghim vị trí.</span><br />Đoán thế giới.</h1>
+          <p class="hero-text">Một ván nhanh khoảng 5 phút. Xoay panorama 360°, tìm dấu hiệu địa lý và đặt ghim chính xác nhất có thể.</p>
+          <div class="hero-stats" aria-label="Thông số trò chơi">
+            <div><strong>5</strong><span>vòng / ván</span></div>
+            <div><strong>60s</strong><span>mỗi vòng</span></div>
+            <div><strong>25K</strong><span>điểm tối đa</span></div>
+          </div>
+        </div>
+
+        <div class="start-card glass-card">
+          <div class="card-heading">
+            <span class="status-dot"></span>
+            <span>Sẵn sàng khám phá?</span>
+          </div>
+
+          <label class="field-label" for="playerName">Tên hiển thị</label>
+          <div class="input-wrap">
+            <span aria-hidden="true">◎</span>
+            <input id="playerName" maxlength="20" autocomplete="nickname" placeholder="Ví dụ: GeoRider" />
+          </div>
+
+          <label class="field-label">Chế độ</label>
+          <div class="mode-card active" role="button" tabindex="0" aria-label="Chế độ Thế giới">
+            <div class="mode-icon">⌖</div>
+            <div><strong>Thế giới</strong><span>5 địa điểm ngẫu nhiên</span></div>
+            <span class="mode-check">✓</span>
+          </div>
+
+          <button id="startBtn" class="button button-primary button-xl" type="button">BẮT ĐẦU CHƠI <span>→</span></button>
+          <p class="privacy-note">Không tài khoản · Không mật khẩu · Điểm cá nhân lưu cục bộ trên trình duyệt</p>
+        </div>
+      </div>
+
+      <section class="leaderboard-preview glass-card" aria-labelledby="leaderboardTitle">
+        <div class="section-title-row">
+          <div><span class="eyebrow">LOCAL LEADERBOARD</span><h2 id="leaderboardTitle">Kỷ lục trên thiết bị này</h2></div>
+          <button id="clearScoresBtn" class="button button-ghost button-sm" type="button">Xóa điểm</button>
+        </div>
+        <div id="leaderboardList" class="leaderboard-list"></div>
+      </section>
+
+      <footer class="landing-footer">
+        <span>GameStreet © 2026 · MIT code license</span>
+        <span>Panorama: Wikimedia Commons · Map: © OpenStreetMap contributors</span>
+      </footer>
+    </section>
+
+    <section id="gameScreen" class="screen game-screen hidden" aria-live="polite">
+      <div class="game-hud">
+        <button id="quitBtn" class="hud-icon" type="button" aria-label="Thoát ván">×</button>
+        <div class="hud-brand"><span class="brand-mark small">G</span><span>GameStreet</span></div>
+        <div class="hud-stats">
+          <div><span>VÒNG</span><strong id="roundLabel">1 / 5</strong></div>
+          <div><span>ĐIỂM</span><strong id="scoreLabel">0</strong></div>
+          <div class="timer-pill" id="timerPill"><span>⏱</span><strong id="timerLabel">60</strong><span>s</span></div>
+        </div>
+      </div>
+
+      <div id="panoramaViewport" class="panorama-viewport" aria-label="Panorama 360 độ">
+        <div id="panoramaTrack" class="panorama-track"></div>
+        <div class="panorama-vignette"></div>
+        <div class="pano-help"><span>↔</span> Kéo để nhìn xung quanh</div>
+        <a id="panoCredit" class="pano-credit" target="_blank" rel="noreferrer">Ảnh 360° · Wikimedia Commons</a>
+      </div>
+
+      <aside id="guessPanel" class="guess-panel">
+        <div class="guess-panel-head">
+          <div><span class="eyebrow">BẢN ĐỒ DỰ ĐOÁN</span><strong>Đặt ghim của bạn</strong></div>
+          <button id="expandMapBtn" class="map-action" type="button" aria-label="Mở rộng bản đồ">↗</button>
+        </div>
+        <div id="guessMap" class="guess-map"></div>
+        <button id="submitGuessBtn" class="button button-primary guess-button" disabled type="button">CHỌN MỘT VỊ TRÍ</button>
+      </aside>
+    </section>
+
+    <section id="resultScreen" class="screen result-screen hidden">
+      <nav class="topbar result-topbar">
+        <div class="brand"><span class="brand-mark">G</span><span>GameStreet</span></div>
+        <span id="resultRoundMeta" class="round-meta">KẾT QUẢ VÒNG 1 / 5</span>
+      </nav>
+      <div class="result-layout">
+        <div class="result-summary">
+          <span class="eyebrow">KHOẢNG CÁCH</span>
+          <div id="distanceBig" class="distance-big">—</div>
+          <p id="resultHeadline">Đang tính kết quả…</p>
+          <div class="score-earned"><span>Điểm vòng này</span><strong id="roundScoreBig">+0</strong></div>
+          <div class="result-actions">
+            <button id="nextRoundBtn" class="button button-primary button-xl" type="button">VÒNG TIẾP THEO <span>→</span></button>
+          </div>
+          <div id="roundFact" class="round-fact"></div>
+        </div>
+        <div id="resultMap" class="result-map"></div>
+      </div>
+    </section>
+
+    <section id="summaryScreen" class="screen summary-screen hidden">
+      <div class="summary-wrap">
+        <div class="summary-card glass-card">
+          <span class="eyebrow">HOÀN THÀNH 5 VÒNG</span>
+          <div class="trophy" aria-hidden="true">◆</div>
+          <h2 id="summaryTitle">Một chuyến đi đẹp!</h2>
+          <p id="summarySub">Kết quả của bạn đã được lưu trên thiết bị này.</p>
+          <div id="finalScore" class="final-score">0</div>
+          <span class="score-caption">/ 25.000 ĐIỂM</span>
+
+          <div class="summary-metrics">
+            <div><span>Khoảng cách TB</span><strong id="avgDistance">—</strong></div>
+            <div><span>Kỷ lục cá nhân</span><strong id="personalBest">—</strong></div>
+            <div><span>Xếp hạng local</span><strong id="localRank">—</strong></div>
+          </div>
+
+          <div id="roundBreakdown" class="round-breakdown"></div>
+
+          <div class="summary-actions">
+            <button id="playAgainBtn" class="button button-primary button-xl" type="button">CHƠI LẠI</button>
+            <button id="shareBtn" class="button button-secondary button-xl" type="button">CHIA SẺ KẾT QUẢ</button>
+          </div>
+          <button id="backHomeBtn" class="button button-link" type="button">← Về trang chủ</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="howDialog" class="how-dialog">
+    <button id="closeHowBtn" class="dialog-close" type="button" aria-label="Đóng">×</button>
+    <span class="eyebrow">CÁCH CHƠI</span>
+    <h2>5 vòng. 5 địa điểm. Một bản đồ.</h2>
+    <ol>
+      <li><strong>Quan sát</strong><span>Kéo panorama để tìm biển báo, kiến trúc và dấu hiệu địa lý.</span></li>
+      <li><strong>Đặt ghim</strong><span>Chạm lên bản đồ và chọn nơi bạn nghĩ ảnh được chụp.</span></li>
+      <li><strong>Gửi dự đoán</strong><span>Bạn càng gần vị trí thật, điểm nhận được càng cao.</span></li>
+    </ol>
+    <p>Điểm tối đa mỗi vòng là 5.000. Đồng hồ sẽ tự gửi vị trí đã ghim khi hết 60 giây.</p>
+  </dialog>
+
+  <div id="toast" class="toast" role="status"></div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="app.js"></script>
+</body>
+</html>
