@@ -1,91 +1,52 @@
 # GameStreet 🌍
 
-**GameStreet** là game trắc nghiệm địa lý chạy trực tiếp trên trình duyệt. Người chơi xem một panorama 360° ngẫu nhiên, quan sát dấu hiệu đường phố và chọn đúng thành phố trong **4 đáp án**.
-
-> Mục tiêu của bản static MVP: **không đăng nhập, không backend, mở trang là chơi ngay**.
+**GameStreet** là game trắc nghiệm địa lý mã nguồn mở MIT: xem panorama 360°, quan sát dấu hiệu đô thị và đoán đúng thành phố.
 
 ## 🎮 Chơi trực tiếp
 
 **https://vietflexmap.github.io/Gamestreet/**
 
-## Cách chơi
+## GameStreet v3 — World City Challenge
 
-1. Nhập tên người chơi.
-2. Mỗi ván có đúng **4 lượt**.
-3. Mỗi lượt lấy ngẫu nhiên một panorama từ bộ địa điểm có sẵn.
-4. Game sinh **4 lựa chọn thành phố** gồm 1 đáp án đúng + 3 đáp án nhiễu ngẫu nhiên.
-5. Chọn thành phố và nhấn **Gửi đáp án**.
-6. Nếu đúng: hiện **“Chúc mừng bạn!”** và cộng **+1.000 điểm**.
-7. Nếu sai: hiện **“Bạn đã sai, rất tiếc!”**, cho biết **kết quả đúng** và trừ **−500 điểm**.
-8. Sau lượt thứ 4, game hiển thị tổng điểm, số câu đúng và bảng kết quả từng lượt.
+- **10 lượt** mỗi ván.
+- Mỗi lượt lấy ngẫu nhiên một panorama từ kho địa điểm chơi.
+- **4 đáp án / lượt**, với 4 thành phố thuộc **4 châu lục khác nhau**.
+- Mỗi ván bảo đảm có **ít nhất một lượt Hà Nội, Việt Nam 🇻🇳**.
+- Người chơi bắt đầu với **2.000 điểm**.
+- Đúng: **+1.000 điểm**.
+- Sai: **−500 điểm**, hiện thông báo rất tiếc và đáp án đúng.
+- Giao diện responsive cho desktop và mobile; panorama kéo ngang để quan sát.
 
-## Luật điểm
+## 🌐 Kho thành phố
 
-- Điểm khởi đầu: **2.000**.
-- Đúng: **+1.000**.
-- Sai: **−500**.
-- Điểm không thấp hơn **0**.
-- Điểm tối đa sau 4 lượt: **6.000**.
+Bản hiện tại có các panorama chơi được gồm Hà Nội, London, Berlin, Paris, Rome, New York, Toronto, Cairo và Sydney. Pool đáp án còn mở rộng thêm Tokyo, Singapore, Seoul, Mexico City, Rio de Janeiro, Buenos Aires, Lima, Cape Town, Nairobi, Auckland, Suva… để mỗi câu có lựa chọn đa châu lục.
 
-## Tính năng
+## 🏆 Bảng xếp hạng
 
-- 4 lượt chơi/người.
-- 4 đáp án thành phố/lượt.
-- Ảnh panorama 360° được lấy ngẫu nhiên.
-- Kéo ngang panorama để quan sát.
-- Thứ tự đáp án được xáo ngẫu nhiên mỗi lượt.
-- Phản hồi đúng/sai ngay sau khi gửi.
-- Hiển thị tên thành phố và quốc gia đúng.
-- Cộng/trừ điểm rõ ràng.
-- Tổng kết số câu đúng trên 4 lượt.
-- Local leaderboard lưu bằng `localStorage`.
-- Responsive cho desktop và mobile.
-- Không cần API key và không cần backend cho bản MVP.
+Cuối ván hiển thị top 10 theo mô hình game:
 
-## Công nghệ
+1. Top 5 là 5 username cố định đại diện **5 châu lục**, có **5 cờ khác nhau**.
+2. Người chơi hiện tại luôn được làm nổi bật ở **hạng #6**.
+3. Hạng #7–#10 là **4 người chơi ngẫu nhiên** từ pool challenger.
+
+> Đây là leaderboard mô phỏng phía client cho bản GitHub Pages static. Có thể thay bằng leaderboard thật qua Supabase/PostgreSQL trong bản online nhiều người chơi.
+
+## 🧱 Kiến trúc
 
 - HTML5
-- CSS3
-- Vanilla JavaScript
-- Wikimedia Commons cho panorama demo
-- GitHub Pages để phát hành
-- GitHub Actions để đồng bộ `main` → `gh-pages`
+- CSS responsive / glass UI
+- JavaScript thuần
+- Wikimedia Commons panorama
+- GitHub Actions → `gh-pages` → GitHub Pages
 
-## Cấu trúc
+Không cần backend, API key hay đăng nhập để chơi bản hiện tại.
 
-```text
-Gamestreet/
-├── index.html
-├── styles.css
-├── app.js
-├── README.md
-├── LICENSE
-├── THIRD_PARTY_ASSETS.md
-└── .github/
-    └── workflows/
-        └── pages.yml
-```
+## 📄 Giấy phép
 
-## Thêm thành phố / panorama
+Mã nguồn GameStreet: **MIT License**.
 
-Mỗi địa điểm được khai báo trong `LOCATIONS` ở `app.js`:
+Panorama và tài sản bên thứ ba giữ giấy phép riêng của nguồn; xem [`THIRD_PARTY_ASSETS.md`](THIRD_PARTY_ASSETS.md).
 
-```js
-{
-  id: "dia-diem",
-  city: "Tên thành phố",
-  country: "Quốc gia",
-  file: "Tên file panorama trên Wikimedia Commons",
-  author: "Tác giả",
-  license: "Giấy phép",
-  hint: "Thông tin xuất hiện sau khi trả lời"
-}
-```
+## 🚀 Phát hành
 
-Nên bổ sung nhiều panorama cho mỗi thành phố để giảm khả năng người chơi ghi nhớ ảnh.
-
-## License
-
-Mã nguồn GameStreet được phát hành theo **MIT License**.
-
-Ảnh panorama và nội dung bên thứ ba **không thuộc MIT License của mã nguồn**. Xem `THIRD_PARTY_ASSETS.md` để biết attribution và giấy phép tương ứng.
+Mỗi thay đổi trên nhánh `main` được workflow GitHub Actions đồng bộ sang `gh-pages`; GitHub Pages sau đó build và xuất bản site trực tiếp.
