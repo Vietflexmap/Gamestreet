@@ -1,295 +1,56 @@
-(() => {
-  "use strict";
-
-  const ROUND_COUNT = 4;
-  const START_SCORE = 2000;
-  const CORRECT_BONUS = 1000;
-  const WRONG_PENALTY = 500;
-  const STORAGE_KEY = "gamestreet:quiz:scores:v1";
-  const NAME_KEY = "gamestreet:player:v1";
-
-  const LOCATIONS = [
-    {id:"trafalgar-london",city:"London",country:"Vương quốc Anh",file:"Trafalgar Square 360 Panorama, London - Jun 2009.jpg",author:"David Iliff",license:"CC BY-SA 3.0",hint:"Quảng trường Trafalgar, một không gian công cộng nổi tiếng ở trung tâm London."},
-    {id:"times-square-nyc",city:"New York",country:"Hoa Kỳ",file:"20080910 Times Square, New York panorama.JPG",author:"Fod",license:"CC BY 2.5 DK",hint:"Times Square, khu giao lộ nổi tiếng với biển quảng cáo và ánh sáng ở Manhattan."},
-    {id:"washingtonplatz-berlin",city:"Berlin",country:"Đức",file:"Berlin Washington Platz – 360° Panorama.jpg",author:"Maximilian Schönherr",license:"CC BY-SA 4.0",hint:"Washingtonplatz nằm cạnh Berlin Hauptbahnhof, nhà ga trung tâm của Berlin."},
-    {id:"piazza-navona-rome",city:"Rome",country:"Ý",file:"Piazza Navona 360 panoramic view.jpg",author:"MatthiasKabel",license:"CC BY-SA 3.0",hint:"Piazza Navona là một quảng trường Baroque nổi tiếng tại Rome."},
-    {id:"sydney-tower",city:"Sydney",country:"Úc",file:"Sydney Tower Panorama.jpg",author:"Gauthier Pelloquin",license:"CC BY-SA 3.0",hint:"Toàn cảnh khu trung tâm Sydney nhìn từ Sydney Tower."},
-    {id:"louvre-paris",city:"Paris",country:"Pháp",file:"Louvre panosphere 20200303.jpg",author:"Daniel Kraft",license:"CC BY-SA 3.0",hint:"Khu vực bảo tàng Louvre và sân Napoléon ở trung tâm Paris."}
-  ];
-
-  const $ = id => document.getElementById(id);
-  const screens = ["homeScreen","gameScreen","resultScreen","summaryScreen"];
-  const state = {
-    player:"Explorer",
-    round:0,
-    score:START_SCORE,
-    answers:[],
-    selectedLocations:[],
-    selectedCity:null,
-    dragging:false,
-    dragStartX:0,
-    dragStartOffset:50,
-    panoOffset:50,
-    locked:false
-  };
-
-  const commonsFileUrl = (file,width=4096) => `https://commons.wikimedia.org/wiki/Special:Redirect/file/${encodeURIComponent(file)}?width=${width}`;
-  const commonsPageUrl = file => `https://commons.wikimedia.org/wiki/File:${encodeURIComponent(file).replace(/%20/g,"_")}`;
-
-  function showScreen(id){
-    screens.forEach(s => $(s).classList.toggle("hidden", s !== id));
-    window.scrollTo({top:0,behavior:"instant"});
-  }
-
-  function shuffle(array){
-    const copy=[...array];
-    for(let i=copy.length-1;i>0;i--){
-      const j=Math.floor(Math.random()*(i+1));
-      [copy[i],copy[j]]=[copy[j],copy[i]];
-    }
-    return copy;
-  }
-
-  function sanitizeName(raw){
-    return (raw||"").replace(/[<>]/g,"").replace(/\s+/g," ").trim().slice(0,20) || "Explorer";
-  }
-
-  function escapeHtml(value){
-    return String(value).replace(/[&<>'"]/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[ch]));
-  }
-
-  function toast(message){
-    const node=$("toast");
-    node.textContent=message;
-    node.classList.add("show");
-    clearTimeout(node._timer);
-    node._timer=setTimeout(()=>node.classList.remove("show"),2200);
-  }
-
-  function startGame(){
-    state.player=sanitizeName($("playerName").value);
-    localStorage.setItem(NAME_KEY,state.player);
-    state.round=0;
-    state.score=START_SCORE;
-    state.answers=[];
-    state.selectedCity=null;
-    state.selectedLocations=shuffle(LOCATIONS).slice(0,ROUND_COUNT);
-    showScreen("gameScreen");
-    beginRound();
-  }
-
-  function beginRound(){
-    state.selectedCity=null;
-    state.locked=false;
-    $("roundLabel").textContent=`${state.round+1} / ${ROUND_COUNT}`;
-    $("scoreLabel").textContent=state.score.toLocaleString("vi-VN");
-    $("submitAnswerBtn").disabled=true;
-    $("submitAnswerBtn").textContent="CHỌN MỘT THÀNH PHỐ";
-
-    const location=state.selectedLocations[state.round];
-    const track=$("panoramaTrack");
-    track.style.opacity=".18";
-    state.panoOffset=15+Math.random()*70;
-    track.style.backgroundPosition=`${state.panoOffset}% center`;
-    track.style.backgroundImage=`url("${commonsFileUrl(location.file)}")`;
-
-    const preload=new Image();
-    preload.onload=()=>{track.style.opacity="1";};
-    preload.onerror=()=>{track.style.opacity=".7";toast("Không tải được ảnh chất lượng cao. Hãy kiểm tra kết nối mạng.");};
-    preload.src=commonsFileUrl(location.file);
-
-    const credit=$("panoCredit");
-    credit.href=commonsPageUrl(location.file);
-    credit.textContent=`${location.author} · ${location.license} · Wikimedia Commons`;
-
-    renderOptions(location);
-  }
-
-  function renderOptions(location){
-    const decoys=shuffle(LOCATIONS.filter(x=>x.city!==location.city)).slice(0,3);
-    const options=shuffle([location,...decoys]);
-    $("cityOptions").innerHTML=options.map((item,index)=>`
-      <button class="city-option" type="button" role="radio" aria-checked="false" data-city="${escapeHtml(item.city)}">
-        <span class="option-letter">${String.fromCharCode(65+index)}</span>
-        <span class="option-copy"><strong>${escapeHtml(item.city)}</strong><small>${escapeHtml(item.country)}</small></span>
-        <span class="option-check">✓</span>
-      </button>
-    `).join("");
-
-    document.querySelectorAll(".city-option").forEach(button=>{
-      button.addEventListener("click",()=>selectCity(button.dataset.city));
-    });
-  }
-
-  function selectCity(city){
-    if(state.locked)return;
-    state.selectedCity=city;
-    document.querySelectorAll(".city-option").forEach(button=>{
-      const active=button.dataset.city===city;
-      button.classList.toggle("selected",active);
-      button.setAttribute("aria-checked",active?"true":"false");
-    });
-    $("submitAnswerBtn").disabled=false;
-    $("submitAnswerBtn").textContent="GỬI ĐÁP ÁN";
-  }
-
-  function submitAnswer(){
-    if(state.locked||!state.selectedCity)return;
-    state.locked=true;
-    const location=state.selectedLocations[state.round];
-    const correct=state.selectedCity===location.city;
-    const delta=correct?CORRECT_BONUS:-WRONG_PENALTY;
-    state.score=Math.max(0,state.score+delta);
-
-    const result={
-      location,
-      selectedCity:state.selectedCity,
-      correct,
-      delta,
-      scoreAfter:state.score
-    };
-    state.answers.push(result);
-    showRoundResult(result);
-  }
-
-  function showRoundResult(result){
-    showScreen("resultScreen");
-    const correct=result.correct;
-    $("resultMeta").textContent=`KẾT QUẢ LƯỢT ${state.round+1} / ${ROUND_COUNT}`;
-    $("resultIcon").textContent=correct?"✓":"×";
-    $("resultIcon").className=`result-icon ${correct?"success":"error"}`;
-    $("resultTitle").textContent=correct?"Chúc mừng bạn!":"Bạn đã sai, rất tiếc!";
-    $("resultMessage").textContent=correct
-      ? `Bạn đã chọn đúng ${result.location.city}.`
-      : `Bạn chọn ${result.selectedCity}. Kết quả đúng là ${result.location.city}. Bạn bị trừ điểm.`;
-    $("correctCity").textContent=result.location.city;
-    $("correctCountry").textContent=result.location.country;
-    $("scoreDelta").textContent=correct?`+${CORRECT_BONUS.toLocaleString("vi-VN")}`:`−${WRONG_PENALTY.toLocaleString("vi-VN")}`;
-    $("scoreDelta").className=correct?"score-good":"score-bad";
-    $("scoreNow").textContent=result.scoreAfter.toLocaleString("vi-VN");
-    $("roundFact").innerHTML=`${escapeHtml(result.location.hint)}<br><span>Ảnh: ${escapeHtml(result.location.author)} · ${escapeHtml(result.location.license)}</span>`;
-    $("nextRoundBtn").innerHTML=state.round===ROUND_COUNT-1?"XEM TỔNG KẾT <span>→</span>":"LƯỢT TIẾP THEO <span>→</span>";
-  }
-
-  function nextRound(){
-    state.round+=1;
-    if(state.round>=ROUND_COUNT){
-      finishGame();
-      return;
-    }
-    showScreen("gameScreen");
-    beginRound();
-  }
-
-  function getScores(){
-    try{return JSON.parse(localStorage.getItem(STORAGE_KEY)||"[]");}
-    catch{return [];}
-  }
-
-  function saveScore(entry){
-    const scores=getScores();
-    scores.push(entry);
-    scores.sort((a,b)=>b.score-a.score||b.correct-a.correct||new Date(b.date)-new Date(a.date));
-    const trimmed=scores.slice(0,30);
-    localStorage.setItem(STORAGE_KEY,JSON.stringify(trimmed));
-    return trimmed;
-  }
-
-  function finishGame(){
-    const correctCount=state.answers.filter(a=>a.correct).length;
-    const previous=getScores();
-    const previousBest=previous.filter(x=>x.player===state.player).reduce((best,x)=>Math.max(best,Number(x.score)||0),0);
-    const entry={player:state.player,score:state.score,correct:correctCount,date:new Date().toISOString()};
-    const scores=saveScore(entry);
-    const rank=scores.findIndex(x=>x.date===entry.date&&x.player===entry.player)+1;
-    const personalBest=Math.max(previousBest,state.score);
-
-    $("summaryTitle").textContent=correctCount===4?"Xuất sắc — 4/4 thành phố!":correctCount>=3?"Khả năng nhận diện thành phố rất tốt!":correctCount>=2?"Bạn đã đi đúng nửa chặng đường!":"Thế giới vẫn còn nhiều thành phố để khám phá!";
-    $("summarySub").textContent=`${state.player}, bạn đã hoàn thành đủ 4 lượt chơi.`;
-    $("finalScore").textContent=state.score.toLocaleString("vi-VN");
-    $("correctCount").textContent=`${correctCount} / ${ROUND_COUNT}`;
-    $("personalBest").textContent=personalBest.toLocaleString("vi-VN");
-    $("localRank").textContent=rank>0?`#${rank}`:"—";
-    $("roundBreakdown").innerHTML=state.answers.map((answer,index)=>`
-      <div class="round-chip ${answer.correct?"correct":"wrong"}">
-        <span>L${index+1}</span>
-        <strong>${answer.correct?"✓":"×"} ${escapeHtml(answer.location.city)}</strong>
-      </div>
-    `).join("");
-    showScreen("summaryScreen");
-    renderLeaderboard();
-  }
-
-  function renderLeaderboard(){
-    const scores=getScores().slice(0,5);
-    const list=$("leaderboardList");
-    if(!scores.length){
-      list.innerHTML=`<div class="empty-leaderboard">Chưa có điểm. Hãy trở thành người đầu tiên hoàn thành 4 lượt.</div>`;
-      return;
-    }
-    list.innerHTML=scores.map((entry,index)=>{
-      const when=new Date(entry.date).toLocaleDateString("vi-VN");
-      return `<div class="score-row">
-        <span class="score-rank">#${index+1}</span>
-        <div><span class="score-name">${escapeHtml(entry.player)}</span><span class="score-meta">${Number(entry.correct)||0}/4 đúng · ${when}</span></div>
-        <span class="score-points">${Number(entry.score).toLocaleString("vi-VN")}</span>
-      </div>`;
-    }).join("");
-  }
-
-  function quitGame(){
-    if(!window.confirm("Thoát ván hiện tại? Bốn lượt của ván này sẽ không được lưu."))return;
-    showScreen("homeScreen");
-  }
-
-  function installPanoramaDrag(){
-    const viewport=$("panoramaViewport");
-    const track=$("panoramaTrack");
-    const getX=e=>e.touches?e.touches[0].clientX:e.clientX;
-
-    const down=e=>{
-      state.dragging=true;
-      state.dragStartX=getX(e);
-      state.dragStartOffset=state.panoOffset;
-      viewport.classList.add("dragging");
-    };
-    const move=e=>{
-      if(!state.dragging)return;
-      const dx=getX(e)-state.dragStartX;
-      state.panoOffset=state.dragStartOffset-dx/window.innerWidth*55;
-      track.style.backgroundPosition=`${state.panoOffset}% center`;
-    };
-    const up=()=>{
-      state.dragging=false;
-      viewport.classList.remove("dragging");
-    };
-
-    viewport.addEventListener("mousedown",down);
-    window.addEventListener("mousemove",move);
-    window.addEventListener("mouseup",up);
-    viewport.addEventListener("touchstart",down,{passive:true});
-    viewport.addEventListener("touchmove",move,{passive:true});
-    viewport.addEventListener("touchend",up,{passive:true});
-  }
-
-  $("startBtn").addEventListener("click",startGame);
-  $("quitBtn").addEventListener("click",quitGame);
-  $("submitAnswerBtn").addEventListener("click",submitAnswer);
-  $("nextRoundBtn").addEventListener("click",nextRound);
-  $("playAgainBtn").addEventListener("click",startGame);
-  $("backHomeBtn").addEventListener("click",()=>showScreen("homeScreen"));
-  $("howBtn").addEventListener("click",()=>$("howDialog").showModal());
-  $("closeHowBtn").addEventListener("click",()=>$("howDialog").close());
-  $("clearScoresBtn").addEventListener("click",()=>{
-    if(window.confirm("Xóa toàn bộ bảng điểm trên thiết bị này?")){
-      localStorage.removeItem(STORAGE_KEY);
-      renderLeaderboard();
-      toast("Đã xóa bảng điểm.");
-    }
-  });
-  $("playerName").addEventListener("keydown",e=>{if(e.key==="Enter")startGame();});
-
-  $("playerName").value=localStorage.getItem(NAME_KEY)||"";
-  installPanoramaDrag();
-  renderLeaderboard();
+(()=>{"use strict";
+const ROUND_COUNT=10,START_SCORE=2000,CORRECT_BONUS=1000,WRONG_PENALTY=500,NAME_KEY="gamestreet:player:v1",SCORE_KEY="gamestreet:quiz:scores:v3";
+const PLAYABLE=[
+{id:"hanoi",city:"Hà Nội",country:"Việt Nam",continent:"Châu Á",flag:"🇻🇳",file:"Ba Dinh Square panorama.jpg",author:"Grenouille vert",license:"CC BY-SA",hint:"Quảng trường Ba Đình tại Hà Nội — một panorama 360° ở trung tâm thủ đô Việt Nam."},
+{id:"london",city:"London",country:"Vương quốc Anh",continent:"Châu Âu",flag:"🇬🇧",file:"Trafalgar Square 360 Panorama, London - Jun 2009.jpg",author:"David Iliff",license:"CC BY-SA 3.0",hint:"Trafalgar Square ở trung tâm London với quảng trường và tượng đài đặc trưng."},
+{id:"berlin",city:"Berlin",country:"Đức",continent:"Châu Âu",flag:"🇩🇪",file:"Berlin Washington Platz – 360° Panorama.jpg",author:"Maximilian Schönherr",license:"CC BY-SA 4.0",hint:"Washingtonplatz cạnh Berlin Hauptbahnhof — một bối cảnh đô thị hiện đại của Berlin."},
+{id:"paris",city:"Paris",country:"Pháp",continent:"Châu Âu",flag:"🇫🇷",file:"Louvre panosphere 20200303.jpg",author:"Daniel Kraft",license:"CC BY-SA 3.0",hint:"Khu vực Louvre và sân Napoléon, một dấu hiệu rất nổi tiếng của Paris."},
+{id:"rome",city:"Rome",country:"Ý",continent:"Châu Âu",flag:"🇮🇹",file:"Piazza Navona 360 panoramic view.jpg",author:"MatthiasKabel",license:"CC BY-SA 3.0",hint:"Piazza Navona với kiến trúc Baroque đặc trưng của Rome."},
+{id:"newyork",city:"New York",country:"Hoa Kỳ",continent:"Bắc Mỹ",flag:"🇺🇸",file:"20080910 Times Square, New York panorama.JPG",author:"Fod",license:"CC BY 2.5 DK",hint:"Times Square với biển quảng cáo và nhịp sống đặc trưng của Manhattan."},
+{id:"toronto",city:"Toronto",country:"Canada",continent:"Bắc Mỹ",flag:"🇨🇦",file:"Toronto 360 degree panorama from CN Tower.jpg",author:"Raul Heinrich",license:"CC",hint:"Panorama 360° của Toronto nhìn từ CN Tower."},
+{id:"cairo",city:"Cairo",country:"Ai Cập",continent:"Châu Phi",flag:"🇪🇬",file:"Cairo panorama (3167403221).jpg",author:"Paul Keller",license:"CC BY",hint:"Panorama 360° từ tháp giáo đường Ibn Tulun nhìn xuống Cairo cổ."},
+{id:"sydney",city:"Sydney",country:"Úc",continent:"Châu Đại Dương",flag:"🇦🇺",file:"Sydney Tower Panorama.jpg",author:"Gauthier Pelloquin",license:"CC BY-SA 3.0",hint:"Toàn cảnh Sydney nhìn từ Sydney Tower."}
+];
+const CITY_POOL=[
+{id:"hanoi",city:"Hà Nội",country:"Việt Nam",continent:"Châu Á",flag:"🇻🇳"},{id:"tokyo",city:"Tokyo",country:"Nhật Bản",continent:"Châu Á",flag:"🇯🇵"},{id:"singapore",city:"Singapore",country:"Singapore",continent:"Châu Á",flag:"🇸🇬"},{id:"seoul",city:"Seoul",country:"Hàn Quốc",continent:"Châu Á",flag:"🇰🇷"},
+{id:"paris",city:"Paris",country:"Pháp",continent:"Châu Âu",flag:"🇫🇷"},{id:"berlin",city:"Berlin",country:"Đức",continent:"Châu Âu",flag:"🇩🇪"},{id:"rome",city:"Rome",country:"Ý",continent:"Châu Âu",flag:"🇮🇹"},{id:"london",city:"London",country:"Vương quốc Anh",continent:"Châu Âu",flag:"🇬🇧"},
+{id:"newyork",city:"New York",country:"Hoa Kỳ",continent:"Bắc Mỹ",flag:"🇺🇸"},{id:"toronto",city:"Toronto",country:"Canada",continent:"Bắc Mỹ",flag:"🇨🇦"},{id:"mexico",city:"Mexico City",country:"Mexico",continent:"Bắc Mỹ",flag:"🇲🇽"},
+{id:"rio",city:"Rio de Janeiro",country:"Brazil",continent:"Nam Mỹ",flag:"🇧🇷"},{id:"buenos",city:"Buenos Aires",country:"Argentina",continent:"Nam Mỹ",flag:"🇦🇷"},{id:"lima",city:"Lima",country:"Peru",continent:"Nam Mỹ",flag:"🇵🇪"},
+{id:"cairo",city:"Cairo",country:"Ai Cập",continent:"Châu Phi",flag:"🇪🇬"},{id:"capetown",city:"Cape Town",country:"Nam Phi",continent:"Châu Phi",flag:"🇿🇦"},{id:"nairobi",city:"Nairobi",country:"Kenya",continent:"Châu Phi",flag:"🇰🇪"},
+{id:"sydney",city:"Sydney",country:"Úc",continent:"Châu Đại Dương",flag:"🇦🇺"},{id:"auckland",city:"Auckland",country:"New Zealand",continent:"Châu Đại Dương",flag:"🇳🇿"},{id:"suva",city:"Suva",country:"Fiji",continent:"Châu Đại Dương",flag:"🇫🇯"}
+];
+const LEADERS=[
+{rank:1,player:"Amina Atlas",flag:"🇪🇬",continent:"Châu Phi",city:"Cairo",score:18000,badge:"Africa Elite"},
+{rank:2,player:"Luca Roma",flag:"🇮🇹",continent:"Châu Âu",city:"Rome",score:17250,badge:"Europe Master"},
+{rank:3,player:"Kenji Drift",flag:"🇯🇵",continent:"Châu Á",city:"Tokyo",score:16500,badge:"Asia Legend"},
+{rank:4,player:"Mia Harbor",flag:"🇺🇸",continent:"Bắc Mỹ",city:"New York",score:15750,badge:"North America Pro"},
+{rank:5,player:"Sofia Andes",flag:"🇧🇷",continent:"Nam Mỹ",city:"Rio",score:15000,badge:"South America Ace"}
+];
+const CHALLENGERS=[{player:"Noah Orbit",flag:"🇦🇺",continent:"Châu Đại Dương",city:"Sydney"},{player:"Linh Pixel",flag:"🇻🇳",continent:"Châu Á",city:"Hà Nội"},{player:"Elena Metro",flag:"🇫🇷",continent:"Châu Âu",city:"Paris"},{player:"Mateo Coast",flag:"🇦🇷",continent:"Nam Mỹ",city:"Buenos Aires"},{player:"Nia Horizon",flag:"🇿🇦",continent:"Châu Phi",city:"Cape Town"},{player:"Chris Neon",flag:"🇨🇦",continent:"Bắc Mỹ",city:"Toronto"},{player:"Ari Nomad",flag:"🇳🇿",continent:"Châu Đại Dương",city:"Auckland"},{player:"Layla River",flag:"🇪🇬",continent:"Châu Phi",city:"Cairo"}];
+const $=id=>document.getElementById(id),screens=["homeScreen","gameScreen","resultScreen","summaryScreen"];
+const state={player:"Explorer",round:0,totalScore:START_SCORE,rounds:[],roundSet:[],question:null,selected:null,panoOffset:50,dragging:false,dragStartX:0,dragStartOffset:50};
+const shuffle=a=>{const x=[...a];for(let i=x.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[x[i],x[j]]=[x[j],x[i]]}return x};
+const sample=(a,n)=>shuffle(a).slice(0,n),fmt=n=>Number(n).toLocaleString("vi-VN"),esc=v=>String(v).replace(/[&<>'"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));
+const fileUrl=(f,w=4096)=>`https://commons.wikimedia.org/wiki/Special:Redirect/file/${encodeURIComponent(f)}?width=${w}`;
+const pageUrl=f=>`https://commons.wikimedia.org/wiki/File:${encodeURIComponent(f).replace(/%20/g,"_")}`;
+function show(id){screens.forEach(s=>$(s).classList.toggle("hidden",s!==id));window.scrollTo({top:0,behavior:"instant"})}
+function toast(t){const n=$("toast");n.textContent=t;n.classList.add("show");clearTimeout(n._t);n._t=setTimeout(()=>n.classList.remove("show"),2200)}
+function name(v){return String(v||"").replace(/[<>]/g,"").replace(/\s+/g," ").trim().slice(0,20)||"Explorer"}
+function buildRoundSet(){const vn=PLAYABLE.find(x=>x.id==="hanoi"),others=PLAYABLE.filter(x=>x.id!=="hanoi"),r=[vn];while(r.length<ROUND_COUNT)r.push(others[Math.floor(Math.random()*others.length)]);return shuffle(r)}
+function buildQuestion(loc){const correct=CITY_POOL.find(x=>x.id===loc.id)||loc;const continents=shuffle([...new Set(CITY_POOL.map(x=>x.continent).filter(c=>c!==loc.continent))]).slice(0,3);const wrong=continents.map(c=>{const p=CITY_POOL.filter(x=>x.continent===c&&x.id!==loc.id);return p[Math.floor(Math.random()*p.length)]});const options=shuffle([correct,...wrong]).map((x,i)=>({...x,optionId:`o${i}`,correct:x.id===loc.id}));return{loc,options}}
+function start(){state.player=name($("playerName").value);localStorage.setItem(NAME_KEY,state.player);state.round=0;state.totalScore=START_SCORE;state.rounds=[];state.roundSet=buildRoundSet();show("gameScreen");begin()}
+function begin(){state.selected=null;state.question=buildQuestion(state.roundSet[state.round]);$("roundLabel").textContent=`${state.round+1} / ${ROUND_COUNT}`;$("scoreLabel").textContent=fmt(state.totalScore);$("scoreMini").textContent=fmt(state.totalScore);renderPano(state.question.loc);renderOptions(state.question.options);$("submitAnswerBtn").disabled=true}
+function renderPano(loc){const t=$("panoramaTrack"),src=fileUrl(loc.file);t.style.opacity=".2";state.panoOffset=15+Math.random()*70;t.style.backgroundPosition=`${state.panoOffset}% center`;t.style.backgroundImage=`url("${src}")`;const im=new Image;im.onload=()=>t.style.opacity="1";im.onerror=()=>{t.style.opacity=".75";toast("Panorama đang tải chậm — hãy kiểm tra mạng.")};im.src=src;$("panoCredit").href=pageUrl(loc.file);$("panoCredit").textContent=`${loc.author} · ${loc.license} · Wikimedia Commons`}
+function renderOptions(opts){$("optionGrid").innerHTML=opts.map((o,i)=>`<button class="option-btn" data-id="${o.optionId}"><span class="option-letter">${String.fromCharCode(65+i)} · ${esc(o.flag)}</span><span class="option-city">${esc(o.city)}</span><span class="option-continent">${esc(o.continent)} · ${esc(o.country)}</span></button>`).join("");document.querySelectorAll(".option-btn").forEach(b=>b.onclick=()=>choose(b.dataset.id))}
+function choose(id){state.selected=id;$("submitAnswerBtn").disabled=false;document.querySelectorAll(".option-btn").forEach(b=>b.classList.toggle("selected",b.dataset.id===id))}
+function submit(){if(!state.selected)return;const sel=state.question.options.find(x=>x.optionId===state.selected),correct=state.question.options.find(x=>x.correct),ok=!!sel?.correct,delta=ok?CORRECT_BONUS:-WRONG_PENALTY;state.totalScore=Math.max(0,state.totalScore+delta);const r={round:state.round+1,ok,delta,selected:sel,correct,loc:state.question.loc,score:state.totalScore};state.rounds.push(r);showResult(r)}
+function showResult(r){show("resultScreen");$("resultRoundMeta").textContent=`KẾT QUẢ LƯỢT ${r.round} / ${ROUND_COUNT}`;const badge=$("resultStateBadge"),box=$("roundScoreBig").parentElement;box.classList.remove("positive","negative");if(r.ok){badge.textContent="CHÚC MỪNG BẠN!";badge.className="result-badge success";$("resultHeadline").textContent="Bạn đã chọn đúng.";$("resultMessage").textContent=`Chúc mừng bạn! Kết quả đúng là ${r.correct.city}, ${r.loc.country}.`;$("roundScoreBig").textContent=`+${fmt(CORRECT_BONUS)}`;box.classList.add("positive")}else{badge.textContent="BẠN ĐÃ SAI";badge.className="result-badge fail";$("resultHeadline").textContent="Rất tiếc, đáp án chưa đúng.";$("resultMessage").textContent=`Bạn đã sai, rất tiếc. Kết quả đúng là ${r.correct.city}, ${r.loc.country}. Bạn bị trừ điểm.`;$("roundScoreBig").textContent=`−${fmt(WRONG_PENALTY)}`;box.classList.add("negative")}$("totalScoreAfterRound").textContent=fmt(r.score);$("roundFact").innerHTML=`<strong>${esc(r.loc.city)}, ${esc(r.loc.country)}</strong><br>${esc(r.loc.hint)}<br><span>Ảnh: ${esc(r.loc.author)} · ${esc(r.loc.license)} · ${esc(r.loc.continent)}</span>`;$("nextRoundBtn").innerHTML=state.round===ROUND_COUNT-1?"XEM BẢNG XẾP HẠNG →":"LƯỢT TIẾP THEO →"}
+function next(){state.round++;if(state.round>=ROUND_COUNT)finish();else{show("gameScreen");begin()}}
+function buildLeaderboard(entry){const lower=sample(CHALLENGERS,4).map((x,i)=>({...x,rank:7+i,score:Math.max(100,entry.score-250-i*175),badge:"Challenger"}));return[...LEADERS,{rank:6,player:entry.player,flag:"🎮",continent:"Người chơi hiện tại",city:`${entry.correct}/10 đúng`,score:entry.score,badge:"Bạn đang chơi",current:true},...lower]}
+function renderBoard(el,rows){el.innerHTML=rows.map(r=>`<div class="score-row ${r.current?"current-player":""}"><span class="score-rank ${r.current?"me":""}">#${r.rank}</span><div><span class="score-name">${esc(r.flag)} ${esc(r.player)}</span><span class="score-meta">${esc(r.continent)} · ${esc(r.city)}</span></div><div><span class="score-points">${fmt(r.score)}</span><span class="score-badge">${esc(r.badge)}</span></div></div>`).join("")}
+function finish(){const correct=state.rounds.filter(r=>r.ok).length,entry={player:state.player,score:state.totalScore,correct,date:new Date().toISOString()};try{const old=JSON.parse(localStorage.getItem(SCORE_KEY)||"[]");old.push(entry);localStorage.setItem(SCORE_KEY,JSON.stringify(old.slice(-50)))}catch{}$("summaryTitle").textContent=correct>=8?"Bậc thầy thành phố!":correct>=5?"World City Challenger!":"Thế giới còn nhiều điều để khám phá!";$("summarySub").textContent=`${state.player}, bạn hoàn thành 10 lượt với ${correct} câu đúng.`;$("finalScore").textContent=fmt(state.totalScore);$("correctCount").textContent=`${correct} / 10`;$("yourRank").textContent="#6";$("roundBreakdown").innerHTML=state.rounds.map(r=>`<div class="round-chip"><span>Lượt ${r.round}</span><strong>${esc(r.correct.city)}</strong><em>${r.ok?`Đúng +${fmt(CORRECT_BONUS)}`:`Sai −${fmt(WRONG_PENALTY)}`}</em></div>`).join("");renderBoard($("summaryLeaderboard"),buildLeaderboard(entry));show("summaryScreen")}
+function preview(){renderBoard($("leaderboardList"),buildLeaderboard({player:"Bạn",score:8200,correct:6}))}
+function installDrag(){const v=$("panoramaViewport"),t=$("panoramaTrack"),x=e=>e.touches?e.touches[0].clientX:e.clientX;const down=e=>{state.dragging=true;state.dragStartX=x(e);state.dragStartOffset=state.panoOffset;v.classList.add("dragging")},move=e=>{if(!state.dragging)return;state.panoOffset=state.dragStartOffset+(x(e)-state.dragStartX)/8;t.style.backgroundPosition=`${state.panoOffset}% center`},up=()=>{state.dragging=false;v.classList.remove("dragging")};v.addEventListener("mousedown",down);v.addEventListener("touchstart",down,{passive:true});window.addEventListener("mousemove",move);window.addEventListener("touchmove",move,{passive:true});window.addEventListener("mouseup",up);window.addEventListener("touchend",up)}
+async function share(){const text=`Tôi vừa đạt ${fmt(state.totalScore)} điểm và đang ở hạng #6 trên GameStreet 🌍`;try{if(navigator.share)await navigator.share({title:"GameStreet",text,url:location.href});else{await navigator.clipboard.writeText(`${text} ${location.href}`);toast("Đã sao chép kết quả.")}}catch(e){if(e?.name!=="AbortError")toast("Không thể chia sẻ lúc này.")}}
+$("startBtn").onclick=start;$("submitAnswerBtn").onclick=submit;$("nextRoundBtn").onclick=next;$("playAgainBtn").onclick=start;$("backHomeBtn").onclick=()=>show("homeScreen");$("quitBtn").onclick=()=>{if(confirm("Thoát ván hiện tại?"))show("homeScreen")};$("shareBtn").onclick=share;const dlg=$("howDialog");$("howBtn").onclick=()=>dlg.showModal();$("closeHowBtn").onclick=()=>dlg.close();const saved=localStorage.getItem(NAME_KEY);if(saved)$("playerName").value=saved;installDrag();preview();
 })();
