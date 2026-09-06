@@ -4,163 +4,76 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <meta name="theme-color" content="#080c18" />
-  <meta name="description" content="GameStreet — nhìn ảnh 360°, chọn đúng thành phố trong 4 đáp án. Mã nguồn mở MIT." />
-  <title>GameStreet — Trắc nghiệm thành phố 360°</title>
+  <meta name="description" content="GameStreet — 10 lượt đoán thành phố qua panorama 360°, 4 đáp án từ 4 châu lục, có Việt Nam." />
+  <title>GameStreet — World City 360 Quiz</title>
   <link rel="preconnect" href="https://commons.wikimedia.org" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <main id="app" class="app-shell">
-    <section id="homeScreen" class="screen home-screen">
-      <div class="ambient ambient-a"></div>
-      <div class="ambient ambient-b"></div>
-
-      <nav class="topbar">
-        <a class="brand" href="#" aria-label="GameStreet trang chủ">
-          <span class="brand-mark">G</span><span>GameStreet</span>
-        </a>
-        <div class="topbar-actions">
-          <button id="howBtn" class="button button-ghost button-sm" type="button">Cách chơi</button>
-          <a class="button button-ghost button-sm" href="https://github.com/Vietflexmap/Gamestreet" target="_blank" rel="noreferrer">GitHub</a>
-        </div>
-      </nav>
-
-      <div class="hero-wrap">
-        <div class="hero-copy">
-          <span class="eyebrow">OPEN SOURCE · MIT · 4 LƯỢT</span>
-          <h1>Nhìn ảnh.<br><span>Chọn thành phố.</span><br>Kiểm tra phản xạ địa lý.</h1>
-          <p class="hero-text">Mỗi lượt hiển thị ngẫu nhiên một panorama đường phố. Quan sát kiến trúc, biển báo và cảnh quan rồi chọn đúng 1 trong 4 thành phố.</p>
-          <div class="hero-stats">
-            <div><strong>4</strong><span>lượt / người</span></div>
-            <div><strong>4</strong><span>đáp án / lượt</span></div>
-            <div><strong>+1K</strong><span>mỗi câu đúng</span></div>
-          </div>
-        </div>
-
-        <div class="start-card glass-card">
-          <div class="card-heading"><span class="status-dot"></span><span>Sẵn sàng thử tài?</span></div>
-          <label class="field-label" for="playerName">Tên người chơi</label>
-          <div class="input-wrap">
-            <span aria-hidden="true">◎</span>
-            <input id="playerName" maxlength="20" autocomplete="nickname" placeholder="Ví dụ: GeoRider" />
-          </div>
-
-          <div class="rule-box">
-            <div><span>Điểm khởi đầu</span><strong>2.000</strong></div>
-            <div><span>Chọn đúng</span><strong class="good">+1.000</strong></div>
-            <div><span>Chọn sai</span><strong class="bad">−500</strong></div>
-          </div>
-
-          <button id="startBtn" class="button button-primary button-xl" type="button">BẮT ĐẦU 4 LƯỢT <span>→</span></button>
-          <p class="privacy-note">Không tài khoản · Ảnh được lấy ngẫu nhiên · Kỷ lục lưu cục bộ trên trình duyệt</p>
-        </div>
+<main id="app" class="app-shell">
+  <section id="homeScreen" class="screen home-screen">
+    <div class="ambient a"></div><div class="ambient b"></div>
+    <nav class="topbar">
+      <a class="brand" href="#"><span class="brand-mark">G</span><span>GameStreet</span></a>
+      <div class="topbar-actions"><button id="howBtn" class="button ghost small">Cách chơi</button><a class="button ghost small" href="https://github.com/Vietflexmap/Gamestreet" target="_blank" rel="noreferrer">GitHub</a></div>
+    </nav>
+    <div class="hero-wrap">
+      <div class="hero-copy">
+        <span class="eyebrow">WORLD CITY · 360° · OPEN SOURCE MIT</span>
+        <h1>Nhìn phố.<br><span>Đoán thành phố.</span><br>Leo bảng xếp hạng.</h1>
+        <p>10 lượt panorama toàn cầu. Mỗi câu chỉ có 4 lựa chọn nhưng chúng đến từ 4 châu lục khác nhau. Ít nhất một lượt trong mỗi ván là thành phố Việt Nam.</p>
+        <div class="hero-stats"><div><strong>10</strong><span>lượt / ván</span></div><div><strong>4</strong><span>châu lục / câu</span></div><div><strong>+1K</strong><span>mỗi câu đúng</span></div></div>
       </div>
-
-      <section class="leaderboard-preview glass-card" aria-labelledby="leaderboardTitle">
-        <div class="section-title-row">
-          <div><span class="eyebrow">LOCAL LEADERBOARD</span><h2 id="leaderboardTitle">Kỷ lục trên thiết bị này</h2></div>
-          <button id="clearScoresBtn" class="button button-ghost button-sm" type="button">Xóa điểm</button>
-        </div>
-        <div id="leaderboardList" class="leaderboard-list"></div>
-      </section>
-
-      <footer class="landing-footer">
-        <span>GameStreet © 2026 · MIT code license</span>
-        <span>Panorama: Wikimedia Commons</span>
-      </footer>
-    </section>
-
-    <section id="gameScreen" class="screen game-screen hidden" aria-live="polite">
-      <header class="game-hud">
-        <button id="quitBtn" class="hud-icon" type="button" aria-label="Thoát ván">×</button>
-        <div class="hud-brand"><span class="brand-mark small">G</span><span>GameStreet</span></div>
-        <div class="hud-stats">
-          <div><span>LƯỢT</span><strong id="roundLabel">1 / 4</strong></div>
-          <div><span>ĐIỂM</span><strong id="scoreLabel">2.000</strong></div>
-        </div>
-      </header>
-
-      <div id="panoramaViewport" class="panorama-viewport" aria-label="Ảnh panorama 360 độ">
-        <div id="panoramaTrack" class="panorama-track"></div>
-        <div class="panorama-vignette"></div>
-        <div class="pano-help">↔ Kéo để quan sát toàn cảnh</div>
-        <a id="panoCredit" class="pano-credit" target="_blank" rel="noreferrer">Ảnh 360° · Wikimedia Commons</a>
+      <div class="start-card glass-card">
+        <div class="card-heading"><span class="status-dot"></span><span>World Challenge đang mở</span></div>
+        <label for="playerName">Username</label>
+        <div class="input-wrap"><span>◎</span><input id="playerName" maxlength="20" autocomplete="nickname" placeholder="Ví dụ: GeoRider"></div>
+        <div class="rule-box"><div><span>Điểm khởi đầu</span><strong>2.000</strong></div><div><span>Trả lời đúng</span><strong class="good">+1.000</strong></div><div><span>Trả lời sai</span><strong class="bad">−500</strong></div><div><span>Việt Nam</span><strong>≥ 1 lượt / ván 🇻🇳</strong></div></div>
+        <button id="startBtn" class="button primary xl">BẮT ĐẦU 10 LƯỢT <span>→</span></button>
+        <p class="privacy-note">Không tài khoản · Không mật khẩu · Chạy trực tiếp trên GitHub Pages</p>
       </div>
-
-      <aside class="quiz-panel glass-card">
-        <div class="quiz-head">
-          <span class="eyebrow">CÂU HỎI</span>
-          <h2>Ảnh này thuộc thành phố nào?</h2>
-          <p>Chọn một đáp án rồi nhấn Gửi.</p>
-        </div>
-        <div id="cityOptions" class="city-options" role="radiogroup" aria-label="Bốn lựa chọn thành phố"></div>
-        <button id="submitAnswerBtn" class="button button-primary submit-answer" disabled type="button">CHỌN MỘT THÀNH PHỐ</button>
-      </aside>
+    </div>
+    <section class="leaderboard-preview glass-card">
+      <div class="section-title-row"><div><span class="eyebrow">GLOBAL-STYLE RANKING</span><h2>Bảng xếp hạng mẫu</h2></div><span class="rank-note">Top 5 = 5 châu lục · Bạn = #6</span></div>
+      <div id="leaderboardList" class="leaderboard-list"></div>
     </section>
+    <footer><span>GameStreet © 2026 · MIT</span><span>Panorama: Wikimedia Commons</span></footer>
+  </section>
 
-    <section id="resultScreen" class="screen result-screen hidden">
-      <div class="result-card glass-card">
-        <div id="resultIcon" class="result-icon">✓</div>
-        <span id="resultMeta" class="eyebrow">KẾT QUẢ LƯỢT 1 / 4</span>
-        <h2 id="resultTitle">Chúc mừng bạn!</h2>
-        <p id="resultMessage">Bạn đã chọn đúng thành phố.</p>
+  <section id="gameScreen" class="screen game-screen hidden">
+    <header class="game-hud"><button id="quitBtn" class="hud-icon">×</button><div class="hud-brand"><span class="brand-mark smallmark">G</span><span>GameStreet</span></div><div class="hud-stats"><div><span>LƯỢT</span><strong id="roundLabel">1 / 10</strong></div><div><span>ĐIỂM</span><strong id="scoreLabel">2.000</strong></div></div></header>
+    <div id="panoramaViewport" class="panorama-viewport"><div id="panoramaTrack" class="panorama-track"></div><div class="panorama-vignette"></div><div class="pano-help">↔ Kéo để nhìn xung quanh</div><a id="panoCredit" class="pano-credit" target="_blank" rel="noreferrer"></a></div>
+    <aside class="quiz-panel glass-card">
+      <div class="quiz-head"><div><span class="eyebrow">CITY QUIZ</span><h2>Đây là thành phố nào?</h2></div><div class="score-mini">Điểm<strong id="scoreMini">2.000</strong></div></div>
+      <p>Mỗi đáp án thuộc một châu lục khác nhau.</p>
+      <div id="optionGrid" class="option-grid"></div>
+      <button id="submitAnswerBtn" class="button primary xl submit" disabled>GỬI ĐÁP ÁN</button>
+    </aside>
+  </section>
 
-        <div class="answer-reveal">
-          <span>Đáp án đúng</span>
-          <strong id="correctCity">—</strong>
-          <small id="correctCountry">—</small>
-        </div>
+  <section id="resultScreen" class="screen result-screen hidden">
+    <div class="result-card glass-card">
+      <span id="resultRoundMeta" class="eyebrow">KẾT QUẢ LƯỢT 1 / 10</span>
+      <div id="resultStateBadge" class="result-badge success">CHÚC MỪNG BẠN!</div>
+      <h2 id="resultHeadline">Bạn đã chọn đúng.</h2><p id="resultMessage"></p>
+      <div class="score-grid"><div class="score-change"><span>Biến động</span><strong id="roundScoreBig">+1.000</strong></div><div class="score-change"><span>Tổng điểm</span><strong id="totalScoreAfterRound">3.000</strong></div></div>
+      <div id="roundFact" class="round-fact"></div>
+      <button id="nextRoundBtn" class="button primary xl">LƯỢT TIẾP THEO →</button>
+    </div>
+  </section>
 
-        <div class="score-change">
-          <span>Điểm lượt này</span>
-          <strong id="scoreDelta">+1.000</strong>
-        </div>
-        <div class="score-now">Tổng điểm: <strong id="scoreNow">3.000</strong></div>
-        <div id="roundFact" class="round-fact"></div>
-
-        <button id="nextRoundBtn" class="button button-primary button-xl" type="button">LƯỢT TIẾP THEO <span>→</span></button>
-      </div>
-    </section>
-
-    <section id="summaryScreen" class="screen summary-screen hidden">
-      <div class="summary-wrap">
-        <div class="summary-card glass-card">
-          <span class="eyebrow">HOÀN THÀNH 4 LƯỢT</span>
-          <div class="trophy">◆</div>
-          <h2 id="summaryTitle">Hoàn thành thử thách!</h2>
-          <p id="summarySub">Kết quả đã được lưu trên thiết bị này.</p>
-          <div id="finalScore" class="final-score">0</div>
-          <span class="score-caption">ĐIỂM CUỐI</span>
-
-          <div class="summary-metrics">
-            <div><span>Trả lời đúng</span><strong id="correctCount">0 / 4</strong></div>
-            <div><span>Kỷ lục cá nhân</span><strong id="personalBest">—</strong></div>
-            <div><span>Xếp hạng local</span><strong id="localRank">—</strong></div>
-          </div>
-
-          <div id="roundBreakdown" class="round-breakdown"></div>
-          <div class="summary-actions">
-            <button id="playAgainBtn" class="button button-primary button-xl" type="button">CHƠI LẠI 4 LƯỢT</button>
-            <button id="backHomeBtn" class="button button-secondary button-xl" type="button">VỀ TRANG CHỦ</button>
-          </div>
-        </div>
-      </div>
-    </section>
-  </main>
-
-  <dialog id="howDialog" class="how-dialog">
-    <button id="closeHowBtn" class="dialog-close" type="button" aria-label="Đóng">×</button>
-    <span class="eyebrow">CÁCH CHƠI</span>
-    <h2>4 lượt. Mỗi lượt 4 thành phố.</h2>
-    <ol>
-      <li><strong>Quan sát ảnh</strong><span>Kéo panorama để tìm dấu hiệu nhận biết.</span></li>
-      <li><strong>Chọn thành phố</strong><span>Chỉ có một đáp án đúng trong bốn lựa chọn.</span></li>
-      <li><strong>Gửi đáp án</strong><span>Đúng +1.000 điểm; sai −500 điểm và game sẽ cho biết đáp án đúng.</span></li>
-    </ol>
-    <p>Mỗi người có đúng 4 lượt trong một ván. Điểm khởi đầu là 2.000 và không giảm dưới 0.</p>
-  </dialog>
-
-  <div id="toast" class="toast" role="status"></div>
-  <script src="app.js"></script>
-</body>
-</html>
+  <section id="summaryScreen" class="screen summary-screen hidden">
+    <div class="summary-card glass-card">
+      <span class="eyebrow">HOÀN THÀNH 10 LƯỢT</span><div class="trophy">◆</div><h2 id="summaryTitle">World City Challenger!</h2><p id="summarySub"></p>
+      <div id="finalScore" class="final-score">0</div><span class="score-caption">ĐIỂM CUỐI CÙNG</span>
+      <div class="summary-metrics"><div><span>Đúng</span><strong id="correctCount">0 / 10</strong></div><div><span>Xếp hạng</span><strong id="yourRank">#6</strong></div><div><span>Vietnam round</span><strong>✓ 🇻🇳</strong></div></div>
+      <div id="roundBreakdown" class="round-breakdown"></div>
+      <div class="leaderboard-block"><div class="section-title-row"><div><span class="eyebrow">TOP 10</span><h2>Bảng xếp hạng người chơi</h2></div><span class="rank-note">Bạn đang ở #6</span></div><div id="summaryLeaderboard" class="leaderboard-list"></div></div>
+      <div class="summary-actions"><button id="playAgainBtn" class="button primary xl">CHƠI LẠI</button><button id="shareBtn" class="button secondary xl">CHIA SẺ</button></div><button id="backHomeBtn" class="button link">← Về trang chủ</button>
+    </div>
+  </section>
+</main>
+<dialog id="howDialog" class="how-dialog"><button id="closeHowBtn" class="dialog-close">×</button><span class="eyebrow">CÁCH CHƠI</span><h2>10 panorama. 4 châu lục. 1 đáp án đúng.</h2><ol><li>Quan sát panorama và kéo ngang để tìm dấu hiệu.</li><li>Chọn 1 trong 4 thành phố; 4 lựa chọn thuộc 4 châu lục khác nhau.</li><li>Đúng +1.000; sai −500. Mỗi ván luôn có ít nhất một lượt Việt Nam.</li></ol></dialog>
+<div id="toast" class="toast"></div>
+<script src="app.js"></script>
+</body></html>
